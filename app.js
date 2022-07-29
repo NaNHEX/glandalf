@@ -32,11 +32,21 @@ app.post('/interactions', async function (req, res) {
     if (name === 'comps') {
       const spe = encodeURIComponent(req.body.data.options[0].value);
       const proj = encodeURIComponent(req.body.data.options[1].value);
-      //const gandalf_cookie = encodeURIComponent(req.body.data.options[2].value);
+      const gandalf_cookie = '36sgdl256mdp72q7epssqrojad' //encodeURIComponent(req.body.data.options[2].value);
       const gandalf_comp_page = await axios.get('https://gandalf.epitech.eu/local/graph/view.php', { headers: {
-        Cookie: 'MoodleSession=36sgdl256mdp72q7epssqrojad;'
+        Cookie: `MoodleSession=${gandalf_cookie};`
       }});
-      console.log(gandalf_comp_page);
+
+      const $ = cheerio.load(gandalf_comp_page.data);
+      const arr = [];
+      $('div.behaviorLine').each((i, div) => {
+        const comp = $(div).children('.competencyTitle');
+        const isOk = $(div).children('.proficiencyIcon');
+        if(isOk.attr('title') !== 'unrated') {
+          arr.push({'status': isOk.attr('title'), 'comp': comp.text()});
+        }
+      });
+
       const results = await axios.get(`https://nervous.fish/competencies-api/?project=${proj}&spe=${spe}`);
       
       let embed = {
@@ -48,12 +58,14 @@ app.post('/interactions', async function (req, res) {
       };
 
       results.data.forEach((comp) => {
-        const field = {
-          "name": comp.behavior,
-          "value": "\u200B",
-          "inline": true,
-        };
-        embed.fields.push(field);
+        if (!arr.find((x) => x.comp === comp && x.isOk === 'success')) {
+          const field = {
+            "name": comp.behavior,
+            "value": "\u200B",
+            "inline": true,
+          };
+          embed.fields.push(field);
+        }
       });
 
       return res.send({
