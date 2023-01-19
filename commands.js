@@ -3,28 +3,7 @@ import { DiscordRequest } from './utils.js';
 export async function HasCommands(appId, commands) {
   if (appId === '') return;
 
-  commands.forEach((c) => HasCommand(appId, c));
-}
-
-async function HasCommand(appId, command) {
-  const endpoint = `applications/${appId}/commands`;
-
-  try {
-    const res = await DiscordRequest(endpoint, { method: 'GET' });
-    const data = await res.json();
-
-    if (data) {
-      const installedNames = data.map((c) => c['name']);
-      if (!installedNames.includes(command['name'])) {
-        console.log(`Installing "${command['name']}"`);
-        InstallCommand(appId, command);
-      } else {
-        console.log(`"${command['name']}" command already installed`);
-      }
-    }
-  } catch (err) {
-    console.error(err);
-  }
+  commands.forEach((c) => InstallCommand(appId, c));
 }
 
 export async function InstallCommand(appId, command) {
@@ -52,6 +31,12 @@ export const COMPS_COMMAND = {
       description: 'The project (e.g T-DEV-700)',
       required: true,
     },
+    {
+      type: 3,
+      name: 'cookie',
+      description: 'The Moodle session cookie',
+      required: true,
+    }
   ],
   type: 1,
 };

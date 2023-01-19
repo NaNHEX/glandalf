@@ -1,7 +1,6 @@
 import 'dotenv/config';
 import express from 'express';
 import axios from 'axios';
-import * as cheerio from 'cheerio';
 import {
   InteractionType,
   InteractionResponseType,
@@ -14,6 +13,9 @@ import {
   HasCommands,
   COMPS_COMMAND,
 } from './commands.js';
+import {
+  getValidatedComps
+} from './utilities.js';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -32,23 +34,12 @@ app.post('/interactions', async function (req, res) {
     if (name === 'comps') {
       const spe = encodeURIComponent(req.body.data.options[0].value);
       const proj = encodeURIComponent(req.body.data.options[1].value);
-      const gandalf_cookie = '36sgdl256mdp72q7epssqrojad' //encodeURIComponent(req.body.data.options[2].value);
-      const gandalf_comp_page = await axios.get('https://gandalf.epitech.eu/local/graph/view.php', { headers: {
-        Cookie: `MoodleSession=${gandalf_cookie};`
-      }});
+      const cookie = encodeURIComponent(req.body.data.options[2].value);
 
-      const $ = cheerio.load(gandalf_comp_page.data);
-      const arr = [];
-      $('div.behaviorLine').each((i, div) => {
-        const comp = $(div).children('.competencyTitle');
-        const isOk = $(div).children('.proficiencyIcon');
-        if(isOk.attr('title') !== 'unrated') {
-          arr.push({'status': isOk.attr('title'), 'comp': comp.text()});
-        }
-      });
-
+      const validatedComps = await getValidatedComps(spe, proj, cookie);
+  
       const results = await axios.get(`https://nervous.fish/competencies-api/?project=${proj}&spe=${spe}`);
-      
+
       let embed = {
         "type": "rich",
         "title": "",
@@ -57,8 +48,17 @@ app.post('/interactions', async function (req, res) {
         "fields": [],
       };
 
+      if (results.data.length <= 0) {
+        const field = {
+          "name": "No competencies were found for these parameters.",
+          "value": "\u200B",
+          "inline": true,
+        };
+        embed.fields.push(field);
+      }
+
       results.data.forEach((comp) => {
-        if (!arr.find((x) => x.comp === comp && x.isOk === 'success')) {
+        if (!validatedComps.find((x) => x.behaviorCode === comp.behavior.split('-')[0].trim())) {
           const field = {
             "name": comp.behavior,
             "value": "\u200B",
